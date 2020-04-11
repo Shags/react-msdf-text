@@ -12,13 +12,15 @@ const App = () => {
           anchorVert={CENTER}
           width={80}
           fontSize={50}
-          textColor={[.1, .1, .1, 1]}
-          backgroundColor={[1.0, .8, .8, 1]}
-          borderColor={[.7, 0, .7, 1]}
-          borderWidth={20}
-          borderRadius={50}
+          textColor={0x0E0E0E}
+          backgroundColor={'hsl(0, 100%, 50%)'}
+          backgroundAlpha={.8}
+          borderColor={'skyblue'}
+          borderAlpha={.9}
+          borderWidth={5}
+          borderRadius={10}
           borderSmoothing={0.1}
-          borderBuffer={30}
+          borderBuffer={3}
         />
       </Suspense>
     </Canvas>

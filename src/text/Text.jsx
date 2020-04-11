@@ -33,7 +33,7 @@ export const RIGHT = 'right'
  * anchorVert, anchorHorz: The anchor point of the text object that will be placed at the placement point - defaults to the center
  * positionVert, positionHorz: Percentage of viewport between the anchor and the top/left - defaults to the center of the viewport
  */
-const Text = ({
+export const Text = ({
   text = '',
   width = 100,
   alignment = CENTER,
@@ -67,7 +67,7 @@ const Text = ({
   ])
 
   // Texture Data
-  const texture = useLoader(THREE.TextureLoader, textureData)
+  const { texture } = useLoader(THREE.TextureLoader, textureData)
 
   // Uniforms for shader
   const uniforms = useMemo(() => {
@@ -199,5 +199,3 @@ const Text = ({
     </mesh>
   )
 }
-
-export default Text
