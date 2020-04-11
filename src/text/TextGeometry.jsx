@@ -6,7 +6,7 @@ import {
   getIndexAttribute,
   getPages,
   getPositions,
-  getUvs
+  getUvs,
 } from './utils'
 
 // Creates the geometry for the text, background, and borders
@@ -28,29 +28,49 @@ const TextGeometry = (props) => {
     hasBorders = false,
     borderRadius = 0,
     borderWidth = 0,
-    borderBuffer = 0
+    borderBuffer = 0,
   } = props
 
   // Array of glyphs for the text
   const glyphs = useMemo(
-    () => getGlyphs(
-      font,
-      text,
-      width,
+    () =>
+      getGlyphs(
+        font,
+        text,
+        width,
+        align,
+        lineHeight,
+        letterSpacing,
+        tabSize,
+        mode,
+        start,
+        end
+      ),
+    [
       align,
-      lineHeight,
+      end,
+      font,
       letterSpacing,
-      tabSize,
+      lineHeight,
       mode,
       start,
-      end
-    ),
-    [align, end, font, letterSpacing, lineHeight, mode, start, tabSize, text, width]
+      tabSize,
+      text,
+      width,
+    ]
   )
 
   // Geometeric positions of the text background and borders
   const positions = useMemo(
-    () => getPositions(glyphs, hasBackground, hasBorders, borderRadius, borderWidth, borderBuffer),
+    () =>
+      getPositions(
+        glyphs,
+        hasBackground,
+        hasBorders,
+        borderRadius,
+        borderWidth,
+        borderBuffer
+      ),
     [borderBuffer, borderRadius, borderWidth, glyphs, hasBackground, hasBorders]
   )
 
@@ -58,9 +78,23 @@ const TextGeometry = (props) => {
   const uvs = useMemo(() => {
     const texWidth = font.common.scaleW
     const texHeight = font.common.scaleH
-    const uvs = getUvs(glyphs, texWidth, texHeight, flipY, hasBackground, hasBorders)
+    const uvs = getUvs(
+      glyphs,
+      texWidth,
+      texHeight,
+      flipY,
+      hasBackground,
+      hasBorders
+    )
     return uvs
-  }, [flipY, font.common.scaleH, font.common.scaleW, glyphs, hasBackground, hasBorders])
+  }, [
+    flipY,
+    font.common.scaleH,
+    font.common.scaleW,
+    glyphs,
+    hasBackground,
+    hasBorders,
+  ])
 
   const index = useMemo(() => {
     return getIndexAttribute(glyphs.length, hasBackground, hasBorders)
@@ -68,9 +102,9 @@ const TextGeometry = (props) => {
 
   const pages = useMemo(() => {
     return getPages(glyphs)
-  }, [glyphs]) 
+  }, [glyphs])
 
-  const update = useCallback(self => {
+  const update = useCallback((self) => {
     self.boundingBox = computeBoundingBox(self.attributes.position.array)
     self.boundingSphere = computeBoundingSphere(self.attributes.position.array)
 
@@ -85,13 +119,15 @@ const TextGeometry = (props) => {
       onUpdate={update}
       {...props}
     >
-      {multipage ?
+      {multipage ? (
         <bufferAttribute
           attachObject={['attributes', 'page']}
           array={pages}
           itemSize={1}
-        /> : <></>
-      }
+        />
+      ) : (
+        <Fragment />
+      )}
       <bufferAttribute
         attachObject={['attributes', 'position']}
         array={positions}
