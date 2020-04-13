@@ -1,6 +1,6 @@
 import React, {Suspense} from 'react'
 import { Canvas } from 'react-three-fiber'
-import {Text, CENTER}  from 'react-msdf-text'
+import { Text, CENTER } from 'react-msdf-text'
 
 const App = () => {
   return (

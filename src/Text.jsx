@@ -67,7 +67,7 @@ export const Text = ({
   ])
 
   // Texture Data
-  const { texture } = useLoader(THREE.TextureLoader, textureData)
+  const texture = useLoader(THREE.TextureLoader, textureData)
 
   // Uniforms for shader
   const uniforms = useMemo(() => {

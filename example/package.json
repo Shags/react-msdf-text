@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "private": true,
   "dependencies": {
-    "react": "file:../node_modules/react",
-    "react-dom": "file:../node_modules/react-dom",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
     "react-msdf-text": "file:..",
-    "react-scripts": "file:../node_modules/react-scripts",
+    "react-scripts": "^3.4.1",
     "react-three-fiber": "^4.0.27",
     "three": "^0.115.0"
   },
