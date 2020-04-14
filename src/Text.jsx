@@ -32,6 +32,7 @@ export const RIGHT = 'right'
  * textureData: png font texture date - deafaults to roboto-regular
  * anchorVert, anchorHorz: The anchor point of the text object that will be placed at the placement point - defaults to the center
  * positionVert, positionHorz: Percentage of viewport between the anchor and the top/left - defaults to the center of the viewport
+ * depthTest: Turn on/off render depth testinting - defaults to true
  */
 export const Text = ({
   text = '',
@@ -54,6 +55,7 @@ export const Text = ({
   anchorHorz = CENTER,
   positionVert = 50,
   positionHorz = 50,
+  depthTest = true,
 }) => {
   // Font Data
   const font = useMemo(() => {
@@ -187,6 +189,7 @@ export const Text = ({
       />
       <shaderMaterial
         attach='material'
+        depthTest={depthTest}
         args={[
           {
             transparent: true,
