@@ -113,6 +113,7 @@ export const getUvs = (
 }
 
 // get the geometric postions for the text, background and borders.
+// set 0,0,0 to the center
 export const getPositions = (
   glyphs,
   hasBack = false,
@@ -126,12 +127,38 @@ export const getPositions = (
   var positions = new Float32Array((glyphs.length + extras) * size)
   var i = extras * size
 
+  // Find the bounding box for the glyphs
+  const { xmin, xmax, ymin, ymax } = glyphs.reduce(
+    ({ xmin, xmax, ymin, ymax }, glyph) => {
+      var bitmap = glyph.data
+
+      // bottom left position
+      var x = glyph.position[0] + bitmap.xoffset
+      var y = glyph.position[1] + bitmap.yoffset
+
+      // quad size
+      var w = bitmap.width
+      var h = bitmap.height
+
+      return {
+        xmin: xmin !== null ? Math.min(xmin, x) : x,
+        xmax: xmax !== null ? Math.max(xmax, x + w) : x + w,
+        ymin: ymin !== null ? Math.min(ymin, y) : y,
+        ymax: ymax !== null ? Math.max(ymax, y + h) : y + h,
+      }
+    },
+    { xmin: null, xmax: null, ymin: null, ymax: null }
+  )
+
+  const width = xmax - xmin
+  const height = ymin - ymax
+
   glyphs.forEach(function (glyph) {
     var bitmap = glyph.data
 
     // bottom left position
-    var x = glyph.position[0] + bitmap.xoffset
-    var y = glyph.position[1] + bitmap.yoffset
+    var x = glyph.position[0] + bitmap.xoffset - width / 2 - xmin
+    var y = glyph.position[1] + bitmap.yoffset - height / 2 - ymin
 
     // quad size
     var w = bitmap.width

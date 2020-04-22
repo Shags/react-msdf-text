@@ -1,6 +1,13 @@
-import React, { useMemo, useCallback } from 'react'
-import { useLoader, useThree } from 'react-three-fiber'
-import * as THREE from 'three'
+import React, { useMemo, useRef } from 'react'
+import { useLoader, useThree, useFrame } from 'react-three-fiber'
+import {
+  Vector3,
+  Font,
+  TextureLoader,
+  Color,
+  DoubleSide,
+  Quaternion,
+} from 'three'
 import TextGeometry from './TextGeometry'
 import robotoFont from './fonts/roboto/Roboto-Regular.json'
 import robotoTexture from './fonts/roboto/Roboto-Regular.png'
@@ -59,7 +66,7 @@ export const Text = ({
 }) => {
   // Font Data
   const font = useMemo(() => {
-    return new THREE.Font(fontData)
+    return new Font(fontData)
   }, [fontData])
 
   const hasBackground = useMemo(() => backgroundAlpha > 0, [backgroundAlpha])
@@ -69,15 +76,15 @@ export const Text = ({
   ])
 
   // Texture Data
-  const texture = useLoader(THREE.TextureLoader, textureData)
+  const texture = useLoader(TextureLoader, textureData)
 
   // Uniforms for shader
   const uniforms = useMemo(() => {
-    const textColorArray = new THREE.Color(textColor).toArray()
+    const textColorArray = new Color(textColor).toArray()
     textColorArray.push(textAlpha)
-    const borderColorArray = new THREE.Color(borderColor).toArray()
+    const borderColorArray = new Color(borderColor).toArray()
     borderColorArray.push(borderAlpha)
-    const backgroundColorArray = new THREE.Color(backgroundColor).toArray()
+    const backgroundColorArray = new Color(backgroundColor).toArray()
     backgroundColorArray.push(backgroundAlpha)
 
     const uniforms = {
@@ -104,77 +111,94 @@ export const Text = ({
   ])
 
   // Retrieve the viewport from the rendering engine
-  const { viewport } = useThree()
-
-  // Calculate the scale of the font using the viewport factor
-  const scale = useMemo(() => {
-    const view = 1 / viewport.factor
-    return (view / font.data.info.size) * fontSize
-  }, [font.data.info.size, fontSize, viewport.factor])
+  const { camera, size } = useThree()
 
   // Calculate the desired width of the text (for wrapping) based on the "width" prop (percentage of the screen width)
   const adjustedTextWidth = useMemo(() => {
-    return ((viewport.width / scale) * width) / 100
-  }, [scale, viewport.width, width])
+    return (size.width * font.data.info.size * (1 / fontSize) * width) / 100
+  }, [size.width, font.data.info.size, fontSize, width])
 
   // Create userData based on the text so that the screen will update if the text changes
   const userData = useMemo(() => {
     return { text }
   }, [text])
 
+  // Capture the camera postion so we can orient the txt towards it
+  const cameraPosition = useMemo(() => {
+    const vec = new Vector3()
+    camera.getWorldPosition(vec)
+    return vec
+  }, [camera])
+
+  const worldQuaternion = useMemo(() => new Quaternion())
+
+  const meshRef = useRef()
+
   // Called whenever the mesh updates. Here we calculate and set the postion of the text.
-  const update = useCallback(
-    (self) => {
-      const box = self.geometry.boundingBox
-      const sphere = self.geometry.boundingSphere
+  useFrame(() => {
+    const self = meshRef.current
 
-      const anchorOffset = {
-        x:
-          anchorHorz === LEFT
-            ? -box.min.x
-            : anchorHorz === CENTER
-            ? -sphere.center.x
-            : anchorHorz === RIGHT
-            ? -box.max.x
-            : 0,
-        y:
-          anchorVert === TOP
-            ? box.min.y
-            : anchorVert === CENTER
-            ? sphere.center.y
-            : anchorVert === BOTTOM
-            ? box.max.y
-            : 0,
-      }
+    const box = self.geometry.boundingBox
+    const sphere = self.geometry.boundingSphere
 
-      const placementOffset = {
-        x: (viewport.width * positionHorz) / 100 - viewport.width / 2,
-        y: viewport.height / 2 - (viewport.height * positionVert) / 100,
-      }
+    const anchorOffset = {
+      x:
+        anchorHorz === LEFT
+          ? -box.min.x
+          : anchorHorz === CENTER
+          ? -sphere.center.x
+          : anchorHorz === RIGHT
+          ? -box.max.x
+          : 0,
+      y:
+        anchorVert === TOP
+          ? box.min.y
+          : anchorVert === CENTER
+          ? sphere.center.y
+          : anchorVert === BOTTOM
+          ? box.max.y
+          : 0,
+    }
 
-      const position = [
-        anchorOffset.x * scale + placementOffset.x,
-        anchorOffset.y * scale + placementOffset.y,
-        0,
-      ]
+    const worldPosition = self.getWorldPosition(self.position)
 
-      self.scale.set(scale, scale, scale)
-      self.position.set(...position)
-      self.rotation.set(Math.PI, 0, 0)
-    },
-    [
-      anchorHorz,
-      anchorVert,
-      positionHorz,
-      positionVert,
-      scale,
-      viewport.height,
-      viewport.width,
+    const aspect = size.width / size.height
+    const distance = cameraPosition.distanceTo(worldPosition)
+    const fov = (camera.fov * Math.PI) / 180 // convert vertical fov to radians
+    const viewHeight = 2 * Math.tan(fov / 2) * distance // visible
+    const viewWidth = viewHeight * aspect
+    const factor = size.width / viewWidth
+    const scale = fontSize / (factor * font.data.info.size)
+
+    const placementOffset = {
+      x: (viewWidth * positionHorz) / 100 - viewWidth / 2,
+      y: viewHeight / 2 - (viewHeight * positionVert) / 100,
+    }
+
+    const position = [
+      anchorOffset.x * scale + placementOffset.x,
+      anchorOffset.y * scale + placementOffset.y,
+      0,
     ]
-  )
+
+    const upright = new Quaternion().setFromAxisAngle(
+      new Vector3(1, 0, 0),
+      Math.PI
+    )
+
+    const rotation = self.parent
+      .getWorldQuaternion(worldQuaternion)
+      .conjugate()
+      .multiply(camera.quaternion)
+      .multiply(upright)
+
+    self.position.set(...position)
+    self.setRotationFromQuaternion(rotation)
+    self.scale.set(scale, scale, scale)
+  })
 
   return (
-    <mesh name='Text' onUpdate={update} userData={userData}>
+    <mesh name='Text' ref={meshRef} userData={userData}>
       <TextGeometry
         attach='geometry'
         text={text}
@@ -190,6 +214,7 @@ export const Text = ({
       <shaderMaterial
         attach='material'
         depthTest={depthTest}
+        side={DoubleSide}
         args={[
           {
             transparent: true,
