@@ -1,6 +1,6 @@
 {
   "name": "react-msdf-text",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Display text in WebGL using Multichannel Signed Distance Field text fonts using React and React-Three-Fiber",
   "author": "Shags",
   "license": "MIT",
