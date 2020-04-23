@@ -134,7 +134,7 @@ export const fragment = `
       }
     } else { 
       // This is where we draw the text from the msdf texture
-      vec3 sample = 1.0 - texture2D(map, vUv).rgb;
+      vec3 sample = texture2D(map, vUv).rgb;
       float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
       float alpha = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0);
       

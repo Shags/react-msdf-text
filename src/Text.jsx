@@ -9,8 +9,8 @@ import {
   Quaternion,
 } from 'three'
 import TextGeometry from './TextGeometry'
-import robotoFont from './fonts/roboto/Roboto-Regular.json'
-import robotoTexture from './fonts/roboto/Roboto-Regular.png'
+import robotoFont from './fonts/roboto/regular.json'
+import robotoTexture from './fonts/roboto/regular.png'
 import { vertex, fragment } from './shaders'
 
 export const TOP = 'top'
