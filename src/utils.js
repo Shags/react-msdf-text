@@ -42,7 +42,7 @@ const computeSphere = (positions) => {
   const height = maxY - minY
   const length = Math.sqrt(width * width + height * height)
 
-  const center = new THREE.Vector3(minX + width / 2, minY + height / 2, 0)
+  const center = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0)
   const radius = length / 2
   return { center, radius }
 }
@@ -151,7 +151,7 @@ export const getPositions = (
   )
 
   const width = xmax - xmin
-  const height = ymin - ymax
+  const height = ymax - ymin
 
   glyphs.forEach(function (glyph) {
     var bitmap = glyph.data

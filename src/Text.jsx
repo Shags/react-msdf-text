@@ -7,6 +7,7 @@ import {
   Color,
   DoubleSide,
   Quaternion,
+  MathUtils,
 } from 'three'
 import TextGeometry from './TextGeometry'
 import robotoFont from './fonts/roboto/regular.json'
@@ -115,31 +116,45 @@ export const Text = ({
 
   // Calculate the desired width of the text (for wrapping) based on the "width" prop (percentage of the screen width)
   const adjustedTextWidth = useMemo(() => {
-    return (size.width * font.data.info.size * (1 / fontSize) * width) / 100
-  }, [size.width, font.data.info.size, fontSize, width])
+    const textWidth =
+      (size.width * font.data.info.size * (1 / fontSize) * width) / 100
+    return textWidth - borderBuffer * 2
+  }, [size.width, font.data.info.size, fontSize, width, borderBuffer])
 
   // Create userData based on the text so that the screen will update if the text changes
   const userData = useMemo(() => {
     return { text }
   }, [text])
 
-  // Capture the camera postion so we can orient the txt towards it
+  // Capture the camera postion so we can orient the text towards it
   const cameraPosition = useMemo(() => {
     const vec = new Vector3()
     camera.getWorldPosition(vec)
     return vec
   }, [camera])
-
-  const worldQuaternion = useMemo(() => new Quaternion())
+  const cameraDirection = useMemo(() => new Vector3(), [])
+  const cameraToPointProjection = useMemo(() => new Vector3(), [])
+  const worldQuaternion = useMemo(() => new Quaternion(), [])
+  const worldPosition = useMemo(() => new Vector3(), [])
 
   const meshRef = useRef()
 
   // Called whenever the mesh updates. Here we calculate and set the postion of the text.
-  useFrame(() => {
+  useFrame(({ camera }) => {
+    // Refresh some variables
     const self = meshRef.current
+    self.parent.getWorldPosition(worldPosition)
+    self.parent.getWorldQuaternion(worldQuaternion)
+    camera.getWorldPosition(cameraPosition)
+    camera.getWorldDirection(cameraDirection)
+    cameraToPointProjection
+      .copy(worldPosition)
+      .sub(cameraPosition)
+      .projectOnVector(cameraDirection)
 
     const box = self.geometry.boundingBox
     const sphere = self.geometry.boundingSphere
+    const boxSize = box.getSize(new Vector3())
 
     const anchorOffset = {
       x:
@@ -160,15 +175,26 @@ export const Text = ({
           : 0,
     }
 
-    const worldPosition = self.getWorldPosition(self.position)
-
     const aspect = size.width / size.height
-    const distance = cameraPosition.distanceTo(worldPosition)
+    // Calculate the distance from the text parents plane to the camera plane.
+    // We want the distance between these two parellel planes, not the distance from the camera point to the parent point.
+    const distance = Math.abs(cameraToPointProjection.length())
     const fov = (camera.fov * Math.PI) / 180 // convert vertical fov to radians
     const viewHeight = 2 * Math.tan(fov / 2) * distance // visible
     const viewWidth = viewHeight * aspect
     const factor = size.width / viewWidth
     const scale = fontSize / (factor * font.data.info.size)
+
+    const bounds = {
+      x: {
+        min: -viewWidth / 2 - worldPosition.x + (boxSize.x * scale) / 2,
+        max: viewWidth / 2 - worldPosition.x - (boxSize.x * scale) / 2,
+      },
+      y: {
+        min: -viewHeight / 2 - worldPosition.y + (boxSize.y * scale) / 2,
+        max: viewHeight / 2 - worldPosition.y - (boxSize.y * scale) / 2,
+      },
+    }
 
     const placementOffset = {
       x: (viewWidth * positionHorz) / 100 - viewWidth / 2,
@@ -176,8 +202,16 @@ export const Text = ({
     }
 
     const position = [
-      anchorOffset.x * scale + placementOffset.x,
-      anchorOffset.y * scale + placementOffset.y,
+      MathUtils.clamp(
+        anchorOffset.x * scale + placementOffset.x,
+        bounds.x.min,
+        bounds.x.max
+      ),
+      MathUtils.clamp(
+        anchorOffset.y * scale + placementOffset.y,
+        bounds.y.min,
+        bounds.y.max
+      ),
       0,
     ]
 
@@ -186,13 +220,13 @@ export const Text = ({
       Math.PI
     )
 
-    const rotation = self.parent
-      .getWorldQuaternion(worldQuaternion)
+    const rotation = worldQuaternion
       .conjugate()
       .multiply(camera.quaternion)
       .multiply(upright)
 
-    self.position.set(...position)
+    // We apply the rotation to the position to make sure we are moving in relation to the camera
+    self.position.set(...position).applyQuaternion(rotation)
     self.setRotationFromQuaternion(rotation)
     self.scale.set(scale, scale, scale)
   })
