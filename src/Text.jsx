@@ -7,7 +7,6 @@ import {
   Color,
   DoubleSide,
   Quaternion,
-  MathUtils,
 } from 'three'
 import TextGeometry from './TextGeometry'
 import robotoFont from './fonts/roboto/regular.json'
@@ -185,33 +184,14 @@ export const Text = ({
     const factor = size.width / viewWidth
     const scale = fontSize / (factor * font.data.info.size)
 
-    const bounds = {
-      x: {
-        min: -viewWidth / 2 - worldPosition.x + (boxSize.x * scale) / 2,
-        max: viewWidth / 2 - worldPosition.x - (boxSize.x * scale) / 2,
-      },
-      y: {
-        min: -viewHeight / 2 - worldPosition.y + (boxSize.y * scale) / 2,
-        max: viewHeight / 2 - worldPosition.y - (boxSize.y * scale) / 2,
-      },
-    }
-
     const placementOffset = {
       x: (viewWidth * positionHorz) / 100 - viewWidth / 2,
       y: viewHeight / 2 - (viewHeight * positionVert) / 100,
     }
 
     const position = [
-      MathUtils.clamp(
-        anchorOffset.x * scale + placementOffset.x,
-        bounds.x.min,
-        bounds.x.max
-      ),
-      MathUtils.clamp(
-        anchorOffset.y * scale + placementOffset.y,
-        bounds.y.min,
-        bounds.y.max
-      ),
+      anchorOffset.x * scale + placementOffset.x,
+      anchorOffset.y * scale + placementOffset.y,
       0,
     ]
 
@@ -221,12 +201,30 @@ export const Text = ({
     )
 
     const rotation = worldQuaternion
+      .clone()
       .conjugate()
       .multiply(camera.quaternion)
       .multiply(upright)
 
-    // We apply the rotation to the position to make sure we are moving in relation to the camera
-    self.position.set(...position).applyQuaternion(rotation)
+    const viewBox = new Vector3(viewWidth, viewHeight, 0)
+    const textSize = new Vector3(boxSize.x, boxSize.y, 0).multiplyScalar(scale)
+    const b = viewBox.clone().sub(textSize).multiplyScalar(0.5)
+
+    const zero = new Vector3(0, 0, 0)
+    const a = worldPosition
+      .clone()
+      .applyQuaternion(camera.quaternion.clone().conjugate())
+    const bl = a.clone().add(b).min(zero)
+    const ur = a.clone().multiplyScalar(-1).add(b).min(zero)
+    const adj = ur.clone().sub(bl).setZ(0)
+
+    adj.applyQuaternion(
+      worldQuaternion.clone().conjugate().multiply(camera.quaternion)
+    )
+
+    const x = new Vector3(...position).add(adj)
+
+    self.position.copy(x)
     self.setRotationFromQuaternion(rotation)
     self.scale.set(scale, scale, scale)
   })
