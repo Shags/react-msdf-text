@@ -138,10 +138,15 @@ export const Text = ({
   const { current: cameraToPointProjection } = useRef(new Vector3())
   const { current: worldQuaternion } = useRef(new Quaternion())
   const { current: worldPosition } = useRef(new Vector3())
+  const { current: matrixWorld } = useRef(new Matrix4())
   const { current: modelViewMatrix } = useRef(new Matrix4())
+
+  const { current: textBoxSize } = useRef(new Vector3())
+  const { current: adjustmentSpace } = useRef(new Vector3())
   const { current: bottomLeftAdj } = useRef(new Vector3())
   const { current: upperRightAdj } = useRef(new Vector3())
 
+  const { current: position } = useRef(new Vector3())
   const { current: rotation } = useRef(new Quaternion())
   const { current: upright } = useRef(
     new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), Math.PI)
@@ -153,13 +158,15 @@ export const Text = ({
   useFrame(({ camera }) => {
     // Refresh some variables
     const self = meshRef.current
-    self.parent.getWorldPosition(worldPosition)
-    self.parent.getWorldQuaternion(worldQuaternion)
+
+    matrixWorld.copy(self.parent.matrixWorld)
+
+    worldPosition.setFromMatrixPosition(matrixWorld)
+    worldQuaternion.setFromRotationMatrix(matrixWorld)
+
     // Calculate the model view matrix. The parents is not set initially.
-    modelViewMatrix.multiplyMatrices(
-      camera.matrixWorldInverse,
-      self.parent.matrixWorld
-    )
+    modelViewMatrix.multiplyMatrices(camera.matrixWorldInverse, matrixWorld)
+
     // Initialize the box adjustment values to the screen coordinates
     bottomLeftAdj.setFromMatrixPosition(modelViewMatrix)
     upperRightAdj.setFromMatrixPosition(modelViewMatrix)
@@ -173,6 +180,7 @@ export const Text = ({
       .conjugate()
       .multiply(camera.quaternion)
       .multiply(upright)
+
     /** Z distance in the camera frame.
      * Caculate depth of the text's parent in relation to the camera by projecting the
      * vector of the worlds position to the camera onto the camera's direction vector. */
@@ -183,7 +191,7 @@ export const Text = ({
 
     const textBox = self.geometry.boundingBox
     const sphere = self.geometry.boundingSphere
-    const textBoxSize = textBox.getSize(new Vector3())
+    textBox.getSize(textBoxSize)
 
     // Calculate the offset of the anchor position
     const anchorOffset = {
@@ -221,15 +229,19 @@ export const Text = ({
     }
 
     // Use the offsets and scale to deterine the initial text position
-    const position = [
+    position.set(
       anchorOffset.x * scale + placementOffset.x,
       anchorOffset.y * scale + placementOffset.y,
-      0,
-    ]
+      0
+    )
+
+    // Include the translation changes as we calculate the adjustments
+    bottomLeftAdj.add(position)
+    upperRightAdj.add(position)
 
     // We determine ho much the text box must be moved to keep it visible.
     // This is the amount of space that would be available around the text box if it was centered on the screen (how much we can move the text before it is off of the screen).
-    const adjustmentSpace = new Vector3(
+    adjustmentSpace.set(
       (viewWidth - textBoxSize.x * scale) * 0.5,
       (viewHeight - textBoxSize.y * scale) * 0.5,
       0
@@ -244,16 +256,15 @@ export const Text = ({
     // We zero out the z axis because we are only calculating in 2D space here.
     const adj = upperRightAdj.clone().sub(bottomLeftAdj).setZ(0)
 
+    // Add in the translations to the adjustments so that they will occur on the same plain
+    adj.add(position)
+
     // The adjument is calculated based on the camera view. We need to rotate these adjustments into the text objects space so they can be correctly applied.
     adj.applyQuaternion(
       worldQuaternion.clone().conjugate().multiply(camera.quaternion)
     )
 
-    self.position.set(
-      position[0] + adj.x,
-      position[1] + adj.y,
-      position[2] + adj.z
-    )
+    self.position.copy(adj)
     self.setRotationFromQuaternion(rotation)
     self.scale.set(scale, scale, scale)
   })
