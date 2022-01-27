@@ -9,7 +9,7 @@
     "react-msdf-text": "file:..",
     "react-scripts": "^3.4.1",
     "react-three-fiber": "^4.0.27",
-    "three": "^0.115.0"
+    "three": "^0.137.0"
   },
   "devDependencies": {
     "mutationobserver-shim": "^0.3.5"
